@@ -54,6 +54,8 @@ swift test                          # 状态机回归测试
 
 公开测试版会放在 GitHub Releases。下载 `Stand-Up-<version>.dmg`，打开后把应用拖入“应用程序”。当前测试包使用本机 ad hoc 签名，首次打开可能需要在 Finder 中右键选择“打开”，或者到“系统设置 → 隐私与安全性”允许。正式面向公众发布前需要 Developer ID 签名和公证。
 
+当前版本：[GitHub Release 0.3.2](https://github.com/kbfx1234/stand-up/releases/tag/v0.3.2) · [直接下载 DMG](https://github.com/kbfx1234/stand-up/releases/download/v0.3.2/Stand-Up-0.3.2.dmg)
+
 菜单栏会持续显示当前阶段图标和倒计时：工作 / 站立阶段显示 `mm:ss`，到点显示 `Stand`，休息完成显示 `Done`，手动暂停显示 `Pause`。这个标签和弹出面板订阅同一个计时状态，每秒同步更新。
 
 ## 习惯系统
