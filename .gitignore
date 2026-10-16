@@ -7,4 +7,8 @@ work/
 *.pkg
 *.xcarchive
 release/
+Resources/AppIcon.iconset-v1/
+Resources/AppIcon.iconset-v2/
+Resources/Minimal.iconset/
+Resources/IconPreview/test.png
 .DS_Store
