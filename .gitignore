@@ -1,0 +1,10 @@
+.build/
+dist/
+.DS_Store
+work/
+*.dmg
+*.zip
+*.pkg
+*.xcarchive
+release/
+.DS_Store
