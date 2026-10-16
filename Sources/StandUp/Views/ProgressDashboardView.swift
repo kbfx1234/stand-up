@@ -19,18 +19,20 @@ struct ProgressDashboardView: View {
         }
         .frame(width: 680, height: 720)
         .background(.regularMaterial)
+        .environment(\.locale, store.language.locale)
+        .navigationTitle(store.copy.progress)
     }
 
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Progress")
+                Text(store.copy.progressTitle)
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
-                Text("Build a rhythm that lasts")
+                Text(store.copy.progressSubtitle)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-                Text("Level \(store.trainingLevel)")
+            Text("\(store.copy.level) \(store.trainingLevel)")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .padding(.horizontal, 12).padding(.vertical, 7)
                 .background(StandUpDesign.accent.opacity(0.12), in: Capsule())
@@ -39,24 +41,26 @@ struct ProgressDashboardView: View {
 
     private var habitCards: some View {
         HStack(spacing: 12) {
-            ProgressMetric(title: "Current streak", value: "\(store.habit.currentStreak) days", symbol: "flame.fill")
-            ProgressMetric(title: "Best streak", value: "\(store.habit.bestStreak) days", symbol: "trophy.fill")
-            ProgressMetric(title: "Qualifying days", value: "\(store.habit.qualifyingDays)", symbol: "checkmark.seal.fill")
+            ProgressMetric(title: store.copy.currentStreak, value: "\(store.habit.currentStreak) \(store.copy.pair("天", "days"))", symbol: "flame.fill")
+            ProgressMetric(title: store.copy.bestStreak, value: "\(store.habit.bestStreak) \(store.copy.pair("天", "days"))", symbol: "trophy.fill")
+            ProgressMetric(title: store.copy.qualifyingDays, value: "\(store.habit.qualifyingDays)", symbol: "checkmark.seal.fill")
         }
     }
 
     private var monthCalendar: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(month.formatted(.dateTime.month(.wide).year()))
+                Text(monthTitle)
                     .font(.headline)
                 Spacer()
                 Button { month = Calendar.current.date(byAdding: .month, value: -1, to: month) ?? month } label: { Image(systemName: "chevron.left") }
+                    .accessibilityLabel(store.copy.pair("上个月", "Previous month"))
                 Button { month = Calendar.current.date(byAdding: .month, value: 1, to: month) ?? month } label: { Image(systemName: "chevron.right") }
+                    .accessibilityLabel(store.copy.pair("下个月", "Next month"))
             }
             LazyVGrid(columns: columns, spacing: 8) {
-                ForEach(Calendar.current.shortWeekdaySymbols, id: \.self) { Text($0.prefix(2)).font(.caption).foregroundStyle(.secondary) }
-                ForEach(calendarDays, id: \.self) { date in
+                ForEach(weekdaySymbols, id: \.self) { Text($0.prefix(2)).font(.caption).foregroundStyle(.secondary) }
+                ForEach(Array(calendarDays.enumerated()), id: \.offset) { _, date in
                     CalendarDayCell(date: date, record: record(for: date), goal: store.settings.dailyGoal)
                 }
             }
@@ -67,9 +71,9 @@ struct ProgressDashboardView: View {
 
     private var totals: some View {
         HStack(spacing: 12) {
-            ProgressMetric(title: "Work tracked", value: duration(totalWork), symbol: "clock")
-            ProgressMetric(title: "Breaks completed", value: "\(store.history.reduce(0) { $0 + $1.completed })", symbol: "figure.stand")
-            ProgressMetric(title: "Goal completion", value: goalRate, symbol: "chart.line.uptrend.xyaxis")
+            ProgressMetric(title: store.copy.workTracked, value: duration(totalWork), symbol: "clock")
+            ProgressMetric(title: store.copy.breaksCompleted, value: "\(store.history.reduce(0) { $0 + $1.completed })", symbol: "figure.stand")
+            ProgressMetric(title: store.copy.goalCompletion, value: goalRate, symbol: "chart.line.uptrend.xyaxis")
         }
     }
 
@@ -85,19 +89,19 @@ struct ProgressDashboardView: View {
     }
 
     private func duration(_ value: TimeInterval) -> String {
-        let hours = Int(value / 3600)
-        let minutes = Int(value.truncatingRemainder(dividingBy: 3600) / 60)
-        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
+        TimeText.total(value, language: store.language)
     }
 
     private var achievements: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Achievements").font(.headline)
+            Text(store.copy.achievements).font(.headline)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                AchievementRow(title: "First break", detail: "Complete your first daily goal", unlocked: store.habit.unlockedAchievements.contains("first-break"), symbol: "figure.stand")
-                AchievementRow(title: "Three-day rhythm", detail: "Hold a three-day streak", unlocked: store.habit.unlockedAchievements.contains("three-day-streak"), symbol: "flame.fill")
-                AchievementRow(title: "Week warrior", detail: "Hold a seven-day streak", unlocked: store.habit.unlockedAchievements.contains("week-streak"), symbol: "calendar.badge.clock")
-                AchievementRow(title: "50 breaks", detail: "Complete fifty breaks", unlocked: store.habit.unlockedAchievements.contains("fifty-breaks"), symbol: "star.fill")
+                ForEach(Achievement.all) { item in
+                    AchievementRow(title: store.copy.achievementTitle(item),
+                                   detail: store.copy.achievementDetail(item),
+                                   unlocked: store.habit.unlockedAchievements.contains(item.id),
+                                   symbol: item.symbol)
+                }
             }
         }
     }
@@ -108,6 +112,19 @@ struct ProgressDashboardView: View {
               let first = calendar.date(from: calendar.dateComponents([.year, .month], from: month)) else { return [] }
         let offset = calendar.component(.weekday, from: first) - 1
         return Array(repeating: nil, count: offset) + range.compactMap { calendar.date(byAdding: .day, value: $0 - 1, to: first) }
+    }
+
+    private var monthTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: store.language.resolved == .chinese ? "zh_CN" : "en_US")
+        formatter.dateFormat = store.language.resolved == .chinese ? "yyyy年M月" : "MMMM yyyy"
+        return formatter.string(from: month)
+    }
+
+    private var weekdaySymbols: [String] {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: store.language.resolved == .chinese ? "zh_CN" : "en_US")
+        return formatter.shortWeekdaySymbols
     }
 
     private func record(for date: Date?) -> DailySummary? {

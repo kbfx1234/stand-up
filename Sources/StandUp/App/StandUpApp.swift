@@ -11,7 +11,7 @@ struct StandUpApp: App {
         }
         .menuBarExtraStyle(.window)
         Settings { SettingsView(store: delegate.store) }
-        Window("Progress", id: "progress") {
+        WindowGroup(id: "progress") {
             ProgressDashboardView(store: delegate.store)
         }
     }
@@ -59,14 +59,14 @@ struct MenuBarLabel: View {
         }
         .fixedSize(horizontal: true, vertical: false)
         .padding(.horizontal, 1)
-        .accessibilityLabel("Stand Up, \(store.phaseTitle), \(TimeText.duration(store.snapshot.remaining))")
+        .accessibilityLabel("Stand Up, \(store.phaseTitle), \(TimeText.duration(store.snapshot.remaining, language: store.language))")
     }
 
     private var menuTime: String {
         switch store.snapshot.phase {
-        case .due: return "Stand"
-        case .ready: return "Done"
-        case .paused: return "Pause"
+        case .due: return store.copy.pair("起身", "Stand")
+        case .ready: return store.copy.pair("完成", "Done")
+        case .paused: return store.copy.pause
         default: return TimeText.clock(store.snapshot.remaining)
         }
     }

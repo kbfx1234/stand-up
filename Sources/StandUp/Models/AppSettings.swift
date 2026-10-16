@@ -2,6 +2,7 @@ import Foundation
 import StandUpCore
 
 struct AppSettings: Codable, Equatable {
+    var language: AppLanguage = .system
     var workMinutes = 45
     var restMinutes = 15
     var idleSeconds = 90
@@ -35,6 +36,7 @@ struct AppSettings: Codable, Equatable {
     init() {}
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        language = try values.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
         workMinutes = try values.decodeIfPresent(Int.self, forKey: .workMinutes) ?? 45
         restMinutes = try values.decodeIfPresent(Int.self, forKey: .restMinutes) ?? 15
         idleSeconds = try values.decodeIfPresent(Int.self, forKey: .idleSeconds) ?? 90

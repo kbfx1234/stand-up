@@ -9,7 +9,8 @@ final class TimerStore: ObservableObject {
     @Published private(set) var habit: HabitStats
     @Published private(set) var todayWorkSeconds: TimeInterval = 0
     @Published private(set) var systemAvailable = true
-    @Published var notificationStatus = "尚未开启通知"
+    @Published private(set) var notificationAvailability: NotificationAvailability = .notRequested
+    var notificationStatus: String { notificationAvailability.text(language: language) }
     @Published var serviceError: String?
     @Published private(set) var loginEnabled = false
     let isDevelopmentMode: Bool
@@ -30,10 +31,13 @@ final class TimerStore: ObservableObject {
     var timerSettings: TimerSettings { core.settings }
     var canSnooze: Bool { !core.state.snoozed }
     var trainingLevel: Int { habit.level }
-    init() {
+    var language: AppLanguage { settings.language }
+    var copy: AppCopy { AppCopy(language: settings.language) }
+    init(previewLanguage: AppLanguage? = nil) {
         let dev = ProcessInfo.processInfo.arguments.contains("--dev")
         let storage = LocalStore(development: dev)
-        let preferences = storage.settings()
+        var preferences = storage.settings()
+        if let previewLanguage { preferences.language = previewLanguage }
         let saved = storage.session()
         isDevelopmentMode = dev
         local = storage
@@ -62,7 +66,7 @@ final class TimerStore: ObservableObject {
             }
         }
         notifications.onError = { [weak self] message in self?.serviceError = message }
-        notifications.configure(snooze: TimeText.duration(core.settings.snoozeDuration))
+        notifications.configure(snooze: core.settings.snoozeDuration, language: language)
         workspace.onChange = { [weak self] in
             // Defer wake/sleep notifications until AppKit finishes its transition.
             Task { @MainActor in self?.handleWorkspaceChange() }
@@ -102,13 +106,13 @@ final class TimerStore: ObservableObject {
                   available: systemAvailable && !deferred,
                   newInput: sample.newInput)
         if core.phase == .due, oldPhase != .due, systemAvailable, settings.notificationsEnabled {
-            notifications.sendBreakDue(rest: TimeText.duration(core.settings.restDuration),
-                                       soundEnabled: settings.soundEnabled)
+            notifications.sendBreakDue(restDuration: core.settings.restDuration,
+                                       soundEnabled: settings.soundEnabled, language: language)
             if settings.floatingReminderEnabled { breakPanel.show(store: self) }
             if settings.fullScreenBreakEnabled { fullScreenBreak.show(store: self) }
         }
         if core.phase == .ready, oldPhase != .ready, systemAvailable, settings.notificationsEnabled {
-            notifications.sendRestComplete(soundEnabled: settings.soundEnabled)
+            notifications.sendRestComplete(soundEnabled: settings.soundEnabled, language: language)
         }
         publish()
         if oldPhase != core.phase || time - lastSave >= 15 { save(); lastSave = time }
@@ -144,28 +148,34 @@ final class TimerStore: ObservableObject {
         local.save(settings: value)
         hotKeys.stop()
         hotKeys.start(enabled: value.keyboardShortcutsEnabled)
-        notifications.configure(snooze: TimeText.duration(core.settings.snoozeDuration))
+        notifications.configure(snooze: core.settings.snoozeDuration, language: language)
         publish()
         save()
+    }
+    func setLanguage(_ value: AppLanguage) {
+        guard settings.language != value else { return }
+        settings.language = value
+        local.save(settings: settings)
+        notifications.configure(snooze: core.settings.snoozeDuration, language: value)
     }
     func requestNotifications() {
         Task {
             do { try await notifications.requestAuthorization() }
             catch { serviceError = error.localizedDescription }
-            notificationStatus = await notifications.statusText()
+            notificationAvailability = await notifications.availability()
         }
     }
     func previewReminder() {
         if settings.floatingReminderEnabled { breakPanel.show(store: self, isPreview: true) }
-        notifications.playPreview(soundEnabled: settings.soundEnabled)
+        notifications.playPreview(soundEnabled: settings.soundEnabled, language: language)
     }
     func refreshPermissions() {
         loginEnabled = login.isEnabled
-        Task { notificationStatus = await notifications.statusText() }
+        Task { notificationAvailability = await notifications.availability() }
     }
     func setLogin(_ enabled: Bool) {
         do { try login.setEnabled(enabled) }
-        catch { serviceError = "登录启动设置失败：\(error.localizedDescription)" }
+        catch { serviceError = copy.pair("登录启动设置失败：", "Launch at login failed: ") + error.localizedDescription }
         loginEnabled = login.isEnabled
     }
     private func publish() {
@@ -237,12 +247,12 @@ final class TimerStore: ObservableObject {
     }
     var phaseTitle: String {
         switch snapshot.phase {
-        case .waiting: return "Waiting"
-        case .working: return "Working"
-        case .due: return "Stand up now"
-        case .resting: return "Standing"
-        case .ready: return "Break complete"
-        case .paused: return "Paused"
+        case .waiting: return copy.waiting
+        case .working: return copy.working
+        case .due: return copy.due
+        case .resting: return copy.standingPhase
+        case .ready: return copy.complete
+        case .paused: return copy.paused
         }
     }
     var statusSymbol: String {

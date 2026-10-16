@@ -66,22 +66,23 @@ struct BreakPanelView: View {
                     .foregroundStyle(StandUpDesign.accent)
                     .scaleEffect(iconPulse ? 1.1 : 1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Stand up for a moment")
+                    Text(store.copy.pair("起来活动一下", "Stand up for a moment"))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    Text("You have reached your work limit")
+                    Text(isPreview ? store.copy.pair("仅预览，不会改变当前计时", "Preview only · your timer is unaffected")
+                                   : store.copy.pair("已经达到工作时限", "You have reached your work limit"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text(TimeText.shortEnglish(store.timerSettings.restDuration))
+                Text(TimeText.duration(store.timerSettings.restDuration, language: store.language))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .monospacedDigit()
             }
             HStack(spacing: 8) {
-                Button("I'm standing") { isPreview ? onDismiss() : store.startBreak() }
+                Button(store.copy.standing) { isPreview ? onDismiss() : store.startBreak() }
                     .buttonStyle(.borderedProminent)
-                Button("Snooze") { isPreview ? onDismiss() : store.snooze() }
+                Button(store.copy.snooze) { isPreview ? onDismiss() : store.snooze() }
                     .buttonStyle(.bordered)
-                Button("Skip") { isPreview ? onDismiss() : store.skipBreak() }
+                Button(store.copy.skip) { isPreview ? onDismiss() : store.skipBreak() }
                     .buttonStyle(.borderless)
             }
             .controlSize(.small)
@@ -94,14 +95,15 @@ struct BreakPanelView: View {
                 .stroke(StandUpDesign.accent.opacity(borderPulse ? 0.72 : 0.18),
                         lineWidth: borderPulse ? 2.0 : 0.7)
         }
-        .opacity(appeared || reduceMotion ? 1 : 0)
-        .scaleEffect(appeared || reduceMotion ? 1 : 0.94)
-        .offset(x: nudgeOffset, y: appeared || reduceMotion ? 0 : -18)
+        .opacity(isPreview || appeared || reduceMotion ? 1 : 0)
+        .scaleEffect(isPreview || appeared || reduceMotion ? 1 : 0.94)
+        .offset(x: nudgeOffset, y: isPreview || appeared || reduceMotion ? 0 : -18)
         .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.82), value: appeared)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: nudgeOffset)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: borderPulse)
         .id(triggerID)
         .onAppear { startAttentionSequence() }
+        .environment(\.locale, store.language.locale)
     }
 
     private func startAttentionSequence() {

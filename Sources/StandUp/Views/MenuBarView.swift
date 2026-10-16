@@ -30,6 +30,7 @@ struct MenuBarView: View {
         .padding(.bottom, 12)
         .frame(width: 346)
         .background(.regularMaterial)
+        .environment(\.locale, store.language.locale)
         .onAppear { store.refreshPermissions() }
     }
 
@@ -38,7 +39,7 @@ struct MenuBarView: View {
             Image(systemName: "figure.stand")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(tint)
-            Text("Stand Up")
+            Text(store.copy.appName)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .tracking(-0.2)
             if store.isDevelopmentMode {
@@ -93,7 +94,7 @@ struct MenuBarView: View {
                             .frame(width: 42, height: 42)
                     }
                     .buttonStyle(PressableButtonStyle(fill: StandUpDesign.panelStrong))
-                    .accessibilityLabel("Pause timer")
+                    .accessibilityLabel(store.copy.pauseTimerHint)
                 }
                 Button(action: primaryActionTapped) {
                     HStack(spacing: 10) {
@@ -118,12 +119,12 @@ struct MenuBarView: View {
             if store.snapshot.phase == .due {
                 HStack(spacing: 8) {
                     Button { store.snooze() } label: {
-                        Text("Snooze \(TimeText.shortEnglish(store.timerSettings.snoozeDuration))")
+                        Text("\(store.copy.snooze) \(TimeText.compact(store.timerSettings.snoozeDuration, language: store.language))")
                             .padding(.horizontal, 12).padding(.vertical, 8)
                     }
                         .disabled(!store.canSnooze)
                     Button { store.skipBreak() } label: {
-                        Text("Skip this").padding(.horizontal, 12).padding(.vertical, 8)
+                        Text(store.copy.skip).padding(.horizontal, 12).padding(.vertical, 8)
                     }
                 }
                 .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -136,8 +137,8 @@ struct MenuBarView: View {
 
     private var dailyStrip: some View {
         HStack(spacing: 10) {
-            DailyGoalCard(completed: store.snapshot.completedBreaks, goal: store.settings.dailyGoal)
-            RhythmCard(work: store.timerSettings.workDuration, rest: store.timerSettings.restDuration)
+            DailyGoalCard(completed: store.snapshot.completedBreaks, goal: store.settings.dailyGoal, language: store.language)
+            RhythmCard(work: store.timerSettings.workDuration, rest: store.timerSettings.restDuration, language: store.language)
         }
         .padding(.bottom, 12)
     }
@@ -148,7 +149,7 @@ struct MenuBarView: View {
                 withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) { historyExpanded.toggle() }
             } label: {
                 HStack {
-                    Label("Recent activity", systemImage: "calendar")
+                    Label(store.copy.recentActivity, systemImage: "calendar")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                     Spacer()
                     Image(systemName: historyExpanded ? "chevron.up" : "chevron.down")
@@ -160,7 +161,7 @@ struct MenuBarView: View {
             .buttonStyle(.plain)
             .padding(.vertical, 11)
             if historyExpanded {
-                HistoryView(records: store.history)
+                HistoryView(records: store.history, language: store.language)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                     .padding(.bottom, 10)
             }
@@ -172,29 +173,29 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 16) {
                 SettingsLink {
-                    Label("Settings", systemImage: "slider.horizontal.3")
+                    Label(store.copy.settings, systemImage: "slider.horizontal.3")
                 }
                 .simultaneousGesture(TapGesture().onEnded { NSApp.activate(ignoringOtherApps: true) })
                 Spacer()
-                if !store.notificationStatus.contains("系统通知已允许") {
+                if store.notificationAvailability != .allowed {
                     Image(systemName: "bell.slash")
                         .foregroundStyle(StandUpDesign.muted)
                         .help(store.notificationStatus)
                 }
-                Button("Quit") { NSApp.terminate(nil) }
+                Button(store.copy.quit) { NSApp.terminate(nil) }
             }
             Button {
                 openWindow(id: "progress")
                 NSApp.activate(ignoringOtherApps: true)
             } label: {
-                Label("Progress", systemImage: "chart.bar.xaxis")
+                Label(store.copy.progress, systemImage: "chart.bar.xaxis")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(StandUpDesign.muted)
             Button {
                 store.resetCycle()
             } label: {
-                Label("Reset current timer", systemImage: "arrow.counterclockwise")
+                Label(store.copy.resetTimer, systemImage: "arrow.counterclockwise")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(StandUpDesign.muted)
@@ -207,33 +208,31 @@ struct MenuBarView: View {
 
     private var eyebrow: String {
         switch store.snapshot.phase {
-        case .resting: return "Standing time remaining"
-        case .ready: return "Standing complete"
-        case .due: return "Stand up now"
-        case .paused: return "Timer paused"
-        default: return "Next stand"
+        case .resting: return store.copy.standingRemaining
+        case .ready: return store.copy.complete
+        case .due: return store.copy.standUpNow
+        case .paused: return store.copy.paused
+        default: return store.copy.nextStand
         }
     }
-
     private var detail: String {
-        if !store.systemAvailable { return "Mac unavailable · work timer paused" }
+        if !store.systemAvailable { return store.copy.systemPaused }
         switch store.snapshot.phase {
-        case .waiting: return "Waiting for input · progress is kept"
-        case .working: return "Active work time · keep the rhythm"
-        case .due: return "Stand up, then confirm below to start the break"
-        case .resting: return "You can keep using the Mac while standing"
-        case .ready: return "Break complete · sit down to start again"
-        case .paused: return "Resume to continue the current rhythm"
+        case .waiting: return store.copy.workKept
+        case .working: return store.copy.workActive
+        case .due: return store.copy.pair("站起来后点击下方按钮开始休息", "Stand up, then confirm below to start the break")
+        case .resting: return store.copy.pair("站着使用电脑也可以", "You can keep using the Mac while standing")
+        case .ready: return store.copy.pair("坐下后开始新一轮", "Sit down to start a new cycle")
+        case .paused: return store.copy.pair("恢复后继续当前节奏", "Resume to continue the current rhythm")
         }
     }
-
     private var primaryActionTitle: String {
         switch store.snapshot.phase {
-        case .working: return "Stand up now"
-        case .waiting: return "Start timer"
-        case .due: return "I’m standing"
-        case .resting, .ready: return "Sit down"
-        case .paused: return "Resume timer"
+        case .working: return store.copy.standUpNow
+        case .waiting: return store.copy.startTimer
+        case .due: return store.copy.standing
+        case .resting, .ready: return store.copy.sitDown
+        case .paused: return store.copy.resume
         }
     }
 
@@ -248,10 +247,10 @@ struct MenuBarView: View {
 
     private var primaryActionHint: String {
         switch store.snapshot.phase {
-        case .waiting: return "Start a new active work cycle"
-        case .resting, .ready: return "End the standing phase and start a new work cycle"
-        case .paused: return "Continue timing"
-        default: return "Start the standing phase"
+        case .waiting: return store.copy.pair("开始有效工作计时", "Start active work timing")
+        case .resting, .ready: return store.copy.pair("结束站立阶段并开始新的工作周期", "End standing and start a new work cycle")
+        case .paused: return store.copy.pair("继续计时", "Continue timing")
+        default: return store.copy.pair("开始站立阶段", "Start the standing phase")
         }
     }
 

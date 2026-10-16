@@ -4,6 +4,7 @@ import StandUpCore
 struct DailyGoalCard: View {
     let completed: Int
     let goal: Int
+    let language: AppLanguage
 
     var body: some View {
         VStack(spacing: 7) {
@@ -18,10 +19,10 @@ struct DailyGoalCard: View {
                     .monospacedDigit()
             }
             .frame(width: 55, height: 55)
-            Text("Daily count")
+            Text(AppCopy(language: language).dailyCount)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(StandUpDesign.muted)
-            Text("\(goal) breaks / day").font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(AppCopy(language: language).breaksPerDay(goal)).font(.system(size: 10)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 125)
@@ -33,6 +34,7 @@ struct DailyGoalCard: View {
 struct RhythmCard: View {
     let work: TimeInterval
     let rest: TimeInterval
+    let language: AppLanguage
 
     var body: some View {
         VStack(spacing: 7) {
@@ -43,10 +45,10 @@ struct RhythmCard: View {
                     .foregroundStyle(StandUpDesign.accent)
             }
             .frame(width: 55, height: 55)
-            Text("Current rhythm")
+            Text(AppCopy(language: language).currentRhythm)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(StandUpDesign.muted)
-            Text("\(TimeText.shortEnglish(work)) / \(TimeText.shortEnglish(rest))")
+            Text("\(TimeText.compact(work, language: language)) / \(TimeText.compact(rest, language: language))")
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .monospacedDigit()
         }

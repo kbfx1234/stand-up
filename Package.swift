@@ -17,7 +17,7 @@ let package = Package(
         ),
         .testTarget(
             name: "StandUpTests",
-            dependencies: ["StandUpCore"],
+            dependencies: ["StandUpCore", "StandUp"],
             path: "Tests"
         )
     ]

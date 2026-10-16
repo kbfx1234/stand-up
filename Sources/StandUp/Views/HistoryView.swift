@@ -3,12 +3,13 @@ import StandUpCore
 
 struct HistoryView: View {
     let records: [DailySummary]
+    let language: AppLanguage
     private var recent: [DailySummary] { records.sorted { $0.id > $1.id }.prefix(7).map { $0 } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             if recent.isEmpty {
-                Text("Complete a break to see your history here")
+                Text(AppCopy(language: language).noHistory)
                     .foregroundStyle(StandUpDesign.muted)
             } else {
                 ForEach(recent) { day in
