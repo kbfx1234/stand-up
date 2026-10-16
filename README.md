@@ -23,7 +23,7 @@ Stand Up 是一个原生 macOS 菜单栏应用：累计 **45 分钟有效工作*
 
 <p align="center">
   <a href="#安装与运行">Build locally</a> ·
-  <a href="https://github.com/kbfx1234/stand-up/releases">View releases</a> ·
+  <a href="https://github.com/kbfx1234/stand-up">Source code</a> ·
   <a href="https://github.com/kbfx1234/stand-up/issues">Report an issue</a>
 </p>
 
